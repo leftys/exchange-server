@@ -5,24 +5,34 @@ import copy
 
 class Book:
     """
-    Limit order book
+    Limit order book.
+    Orders are managed through open_order and remove_order methods.
     """
     def __init__(self):
-        self.bid = [] # todo: rename to _bid
-        self.ask = []
+        self._bid = []
+        self._ask = []
         pass
 
     def open_order(self, order):
+        """
+        :param order: Book.Order object
+        :return: filled orders as a list of Book.Order objects.
+        """
+        assert order.side in ["BUY", "SELL"]
         if order.side == "BUY":
-            heap = self.bid
+            heap = self._bid
         elif order.side == "SELL":
-            heap = self.ask
+            heap = self._ask
         heapq.heappush(heap, order)
-        return self.try_match_order()
+        return self._try_match_order()
 
     def remove_order(self, orderid: str):
-        for heap in [self.bid, self.ask]:
-            for idx,order in enumerate(heap):
+        """
+        :param orderid: Order_id assigned by client during opening.
+        :return: The removed order as Book.Order.
+        """
+        for heap in [self._bid, self._ask]:
+            for idx, order in enumerate(heap):
                 if order.id == orderid:
                     # Remove element from heap, runs in O(n)
                     heap[idx] = heap[-1]
@@ -30,18 +40,18 @@ class Book:
                     heapq.heapify(heap)
                     return order
 
-    def try_match_order(self):
+    def _try_match_order(self):
         filled = []
-        if len(self.bid)==0 or len(self.ask)==0:
+        if len(self._bid) == 0 or len(self._ask) == 0:
             return filled
-        bid = self.bid[0]
-        ask = self.ask[0]
+        bid = self._bid[0]
+        ask = self._ask[0]
 
         while bid.price >= ask.price:
             qty = min(bid.qty, ask.qty)
             price = bid.price
-            print("Matched orders at {0} ({1}x).".format(price,qty))
-            for (order,heap) in [(bid, self.bid), (ask, self.ask)]:
+            print("Matched orders at {0} ({1}x).".format(price, qty))
+            for (order, heap) in [(bid, self._bid), (ask, self._ask)]:
                 order.qty -= qty
                 if order.qty == 0:
                     heapq.heappop(heap)
@@ -51,12 +61,11 @@ class Book:
                 order_report.price = price
                 filled.append(order_report)
 
-            if len(self.bid)==0 or len(self.ask)==0:
+            if len(self._bid) == 0 or len(self._ask) == 0:
                 return filled
-            bid = self.bid[0]
-            ask = self.ask[0]
+            bid = self._bid[0]
+            ask = self._ask[0]
         return filled
-
 
 
 class Order:
