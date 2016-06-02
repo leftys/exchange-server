@@ -16,17 +16,17 @@ class Exchange:
 
     async def open_order(self, orderid: str, clientid: int, side: str, price: int, qty: int) -> None:
         order = book.Order(orderid, clientid, side, price, qty)
-        filled = self.book.open_order(order)
+        order, filled = self.book.open_order(order)
         order_was_traded = len(filled) > 0
-        order_was_fully_traded = order_was_traded and order.qty == 0
+        order_was_fully_traded = order.qty == 0
         if self.fill_callback:
             for order in filled:
-                await self.fill_callback(order.clientid, order.id, order.price, order.qty)
+                await self.fill_callback(order.clientid, order.id, order.price_traded, order.qty)
         if self.datastream_callback:
             if not order_was_fully_traded: # todo: bug
                 # Notify about the opened order only if it has not been fully traded and therefore remains in the book.
-                available_qty = self.book.get_qty_at_price(side, price)
-                await self.datastream_callback("orderbook", order.side, order.time, price, available_qty)
+                # There are no more orders with the same price and side, as they would have get fulfilled already.
+                await self.datastream_callback("orderbook", order.side, order.time, order.price, order.qty)
             if order_was_traded:
                 # Notify about the conducted trade.
                 order_result = filled[0]
