@@ -113,7 +113,7 @@ class Server:
             "message": "executionReport",
             "report": "FILL",
             "orderId": orderid,
-            "price": price,
+            "price": price, # todo: price_close?
             "quantity": qty
         })
 
@@ -122,7 +122,7 @@ class Server:
         for (reader,writer) in self.datastream_clients.values():
             message = {
                 "type": type,
-                "price": price,
+                "price": price, # todo: price_close?
                 "quantity": qty,
                 "time": time.timestamp(),
             }

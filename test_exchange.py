@@ -35,17 +35,19 @@ class TestExchange(TestCase):
         self.datastream_report = []
         e.set_callbacks(self.fill_callback, self.datastream_callback)
         tasks = [
-            e.open_order("123", 0, "BUY", 150, 200),
-            e.open_order("234", 1, "SELL", 149, 100),
+            e.open_order("223", 0, "BUY", 150, 200),
+            e.open_order("334", 1, "SELL", 149, 100),
         ]
         loop.run_until_complete(asyncio.wait(tasks))
         self.assertEqual(len(self.fill_report), 2, "Fill callback failed")
         self.assertEqual(self.fill_report[0][2], 150, "Order matched at wrong price")
         self.assertEqual(len(self.datastream_report), 3, "Datastream callback failed")
-        self.assertEqual(self.datastream_report[2][3], 150, "Trade published with wrong price")
+        self.assertEqual(self.datastream_report[1][3], 150, "Trade published with wrong price")
 
     async def fill_callback(self, *args):
+        print("Fill callback received:",args)
         self.fill_report.append(args)
 
     async def datastream_callback(self, *args):
+        print("Datastream callback received:",args)
         self.datastream_report.append(args)
