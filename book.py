@@ -1,7 +1,6 @@
 #import heapq
 from datetime import datetime
 import copy
-from bisect import insort
 
 
 class Book:
@@ -12,7 +11,7 @@ class Book:
     def __init__(self):
         self._bid = {}
         self._ask = {}
-        pass
+        self._order_by_id_idx = {}
 
     def _opposite(self, side: str):
         if side == "BUY":
@@ -33,22 +32,27 @@ class Book:
         :return: filled orders as a list of Book.Order objects.
         """
         table = self._get_table(order.side)
-        insort(table,order)
+        try:
+            orders = table[order.price]
+            orders.append(order)
+        except KeyError:
+            table[order.price] = order
+        self._order_by_id_idx[(order.clientid, order.id)] = (order.side, order.price)
         return self._try_match_order(order)
 
-    def remove_order(self, orderid: str):
+    def remove_order(self, clientid: str, orderid: str):
         """
         :param orderid: Order_id assigned by client during opening.
         :return: The removed order as Book.Order.
         """
-        for side in ["BUY", "SELL"]:
-            table = self._get_table(side)
-            # todo: utilize the sort for log(N) algorithm
-            for idx, order in enumerate(table):
-                if order.id == orderid:
-                    # Remove element from heap, runs in O(n)
-                    del table[idx]
-                    return order
+        (side, price) = self._order_by_id_idx[(clientid, orderid)]
+        orders = self._get_table(side)[price]
+        for idx, order in enumerate(orders):
+            if order.clientid == clientid and order.id == orderid:
+                del orders[idx]
+                del self._order_by_id_idx[(clientid, orderid)]
+                assert orders == self._get_table(side)[price]
+                return order
 
     def _try_match_order(self, opened_order):
         filled = []

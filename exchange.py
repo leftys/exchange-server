@@ -39,9 +39,8 @@ class Exchange:
                         await self.datastream_callback("orderbook", changed_order.side, changed_order.time, changed_order.price_original,
                                                        self.book.get_qty_at_price(changed_order.side, changed_order.price_original))
 
-
-    async def cancel_order(self, orderid: str) -> None:
-        order = self.book.remove_order(orderid)
+    async def cancel_order(self, clientid: str, orderid: str) -> None:
+        order = self.book.remove_order(clientid, orderid)
         if self.datastream_callback:
             await self.datastream_callback("cancel", order.side, order.time, order.price, order.qty)
 

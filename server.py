@@ -89,7 +89,7 @@ class Server:
                     "message": "cancelOrder",
                     "orderId": data["orderId"]
                 })
-                await self.exchange.cancel_order(data["orderId"], clientid)
+                await self.exchange.cancel_order(clientid, data["orderId"])
         return clientid
 
     async def _handle_datastream(self, client_reader, client_writer):
