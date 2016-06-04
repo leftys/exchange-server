@@ -113,8 +113,8 @@ class Server:
             "message": "executionReport",
             "report": "FILL",
             "orderId": orderid,
-            "price": price, # todo: price_close?
-            "quantity": qty
+            "price": price_traded,
+            "quantity": qty # Report how many were traded
         })
 
     async def send_datastream_report(self, type: str, side: str, time: datetime.time, price: int, qty: int) -> None:
@@ -122,7 +122,7 @@ class Server:
         for (reader,writer) in self.datastream_clients.values():
             message = {
                 "type": type,
-                "price": price, # todo: price_close?
+                "price": price,
                 "quantity": qty,
                 "time": time.timestamp(),
             }

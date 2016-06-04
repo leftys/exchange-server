@@ -1,4 +1,4 @@
-#import heapq
+import heapq
 from datetime import datetime
 import copy
 
@@ -9,9 +9,9 @@ class Book:
     Orders are managed through open_order and remove_order methods.
     """
     def __init__(self):
-        self._bid = {}
-        self._ask = {}
-        self._order_by_id_idx = {}
+        self._bid = []
+        self._ask = []
+        self._order_by_price_idx = {}
 
     def _opposite(self, side: str):
         if side == "BUY":
@@ -32,12 +32,8 @@ class Book:
         :return: filled orders as a list of Book.Order objects.
         """
         table = self._get_table(order.side)
-        try:
-            orders = table[order.price]
-            orders.append(order)
-        except KeyError:
-            table[order.price] = order
-        self._order_by_id_idx[(order.clientid, order.id)] = (order.side, order.price)
+        heapq.heappush(table, order)
+        self._update_price_qty(order.side, order.price, order.qty)
         return self._try_match_order(order)
 
     def remove_order(self, clientid: str, orderid: str):
@@ -45,14 +41,13 @@ class Book:
         :param orderid: Order_id assigned by client during opening.
         :return: The removed order as Book.Order.
         """
-        (side, price) = self._order_by_id_idx[(clientid, orderid)]
-        orders = self._get_table(side)[price]
-        for idx, order in enumerate(orders):
-            if order.clientid == clientid and order.id == orderid:
-                del orders[idx]
-                del self._order_by_id_idx[(clientid, orderid)]
-                assert orders == self._get_table(side)[price]
-                return order
+        for side in ['BUY', 'SELL']:
+            orders = self._get_table(side)
+            for idx, order in enumerate(orders):
+                if order.clientid == clientid and order.id == orderid:
+                    del orders[idx]
+                    self._update_price_qty(side, order.price, -order.qty)
+                    return order
 
     def _try_match_order(self, opened_order):
         filled = []
@@ -60,7 +55,7 @@ class Book:
             return opened_order, filled
         table = self._get_table(self._opposite(opened_order.side))
 
-        while len(table) > 0 and not opened_order < table[0]: # We use our comparator defined below. todo: can we use > ?
+        while len(table) > 0 and not opened_order < table[0] and opened_order.qty > 0: # We use our comparator defined below. todo: can we use > ?
             # It's a match
             qty = min(opened_order.qty, table[0].qty)
             price = opened_order.price if opened_order.side == "BUY" else table[0].price
@@ -69,20 +64,34 @@ class Book:
             # Opened order
             opened_order.qty -= qty
             opened_order.price_traded = price
+            self._update_price_qty(opened_order.side, opened_order.price, -qty)
             if opened_order.qty == 0:
-                    table_opened_order = self._get_table(opened_order.side)
-                    del table_opened_order[0]
+                    heapq.heappop(self._get_table(opened_order.side))
 
             # Matched orders
             order_report = copy.copy(table[0])
             order_report.qty = qty
             order_report.price_traded = price
             filled.append(order_report)
+            self._update_price_qty(order_report.side, order_report.price, -qty)
+            if table[0].qty == qty:
+                heapq.heappop(table)
 
         return opened_order, filled
 
     def get_price_qty(self, side: str, price: int):
-        table = self._get_table(side)
+        try:
+            return self._order_by_price_idx[(side, price)]
+        except KeyError:
+            return 0
+
+    def _update_price_qty(self, side: str, price: int, qty: int):
+        try:
+            self._order_by_price_idx[(side, price)] += qty
+            if self._order_by_price_idx[(side, price)] == 0:
+                del self._order_by_price_idx[(side, price)]
+        except KeyError:
+            self._order_by_price_idx[(side, price)] = qty
 
 
 class Order:
@@ -100,7 +109,6 @@ class Order:
         self.time = datetime.now()
 
     def __lt__(self, other):
-        assert self.side == other.side
         if self.side == "BUY":
             if self.price < other.price:
                 return True
