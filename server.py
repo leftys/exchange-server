@@ -10,7 +10,7 @@ class Server:
     """
 
     def __init__(self, host, port, exchange):
-        self.order_server = None # encapsulates the server sockets
+        self.order_server = None  # encapsulates the server sockets
         self.datastream_server = None
         self.host = host
         self.port = port
@@ -61,7 +61,7 @@ class Server:
         task.add_done_callback(client_done)
 
     async def _send_json(self, writer, json_str):
-        writer.write((json.dumps(json_str)+"\n").encode("utf-8"))
+        writer.write((json.dumps(json_str) + "\n").encode("utf-8"))
         await writer.drain()
 
     async def _handle_client(self, clientid, client_reader, client_writer):
@@ -76,16 +76,16 @@ class Server:
             if not string:  # an empty string means the client disconnected
                 break
             data = json.loads(string.rstrip())
-            #print("Received: ",data)
+            # print("Received: ",data)
             if data["message"] == "createOrder":
-                await self._send_json(client_writer,{
+                await self._send_json(client_writer, {
                     "message": "executionReport",
                     "orderId": data["orderId"],
                     "report": "NEW"
                 })
                 await self.exchange.open_order(data["orderId"], clientid, data["side"], data["price"], data["quantity"])
             elif data["message"] == "cancelOrder":
-                await self._send_json(client_writer,{
+                await self._send_json(client_writer, {
                     "message": "cancelOrder",
                     "orderId": data["orderId"]
                 })
@@ -109,18 +109,18 @@ class Server:
             print("Client {0} already disconnected. Not sending fill report.".format(clientid))
             return
         (reader, writer) = self.clients[clientid]
-        await self._send_json(writer,{
+        await self._send_json(writer, {
             "message": "executionReport",
             "report": "FILL",
             "orderId": orderid,
             "price": price,
-            "quantity": qty # Report how many were traded
+            "quantity": qty  # Report how many were traded
         })
 
     async def send_datastream_report(self, type: str, side: str, time: datetime.time, price: int, qty: int) -> None:
-        translate = {"BUY":"bid", "SELL":"ask"}
+        translate = {"BUY": "bid", "SELL": "ask"}
         assert type != "trade" or qty != 0
-        for (reader,writer) in self.datastream_clients.values():
+        for (reader, writer) in self.datastream_clients.values():
             message = {
                 "type": type,
                 "price": price,
@@ -129,7 +129,7 @@ class Server:
             }
             if side:  # only for some types of reports, not for "trade"
                 message["side"] = translate[side]
-            await self._send_json(writer,message)
+            await self._send_json(writer, message)
 
     def start(self, loop):
         """
@@ -144,7 +144,7 @@ class Server:
                                          loop=loop))
         self.datastream_server = loop.run_until_complete(
             asyncio.streams.start_server(self._accept_datastream,
-                                         self.host, self.port+1,
+                                         self.host, self.port + 1,
                                          loop=loop))
 
     def stop(self, loop):

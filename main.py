@@ -10,17 +10,18 @@ from exchange import Exchange
 
 def _stop_server(signame: str, server: Server, loop: asyncio.AbstractEventLoop) -> None:
     print("Received signal %s: exiting." % signame)
+    server.stop(loop)
     loop.stop()
 
 
-#def wakeup(loop):
+# def wakeup(loop):
     # Call again
 #    loop.call_later(0.1, wakeup, loop)
 
 
 def main():
     loop = asyncio.get_event_loop()
-    #loop.call_later(0.1, wakeup, loop)
+    # loop.call_later(0.1, wakeup, loop)
     print("Starting server.")
 
     # create Exchange

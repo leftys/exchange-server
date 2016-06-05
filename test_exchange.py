@@ -25,7 +25,7 @@ class TestExchange(TestCase):
         loop = asyncio.get_event_loop()
         e = exchange.Exchange()
         loop.run_until_complete(e.open_order("123", 0, "BUY", 150, 200))
-        loop.run_until_complete(e.cancel_order(0, "123"))
+        loop.run_until_complete(e.cancel_order("0", "123"))
         self.assertEqual(len(e.book._bid), 0, "Order was not canceled")
 
     def test_set_callbacks(self):
@@ -45,9 +45,9 @@ class TestExchange(TestCase):
         # todo: more tests. report order may vary!
 
     async def fill_callback(self, *args):
-        print("Fill callback received:",args)
+        print("Fill callback received:", args)
         self.fill_report.append(args)
 
     async def datastream_callback(self, *args):
-        print("Datastream callback received:",args)
+        print("Datastream callback received:", args)
         self.datastream_report.append(args)

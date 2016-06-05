@@ -58,14 +58,14 @@ class Book:
             return opened_order, filled
         table = self._get_table(self._opposite(opened_order.side))
 
-        while len(table) > 0 and self._matches(opened_order, table[0]) and opened_order.qty > 0: # We use our comparator defined below. todo: can we use > ?
+        while len(table) > 0 and self._matches(opened_order, table[0]) and opened_order.qty > 0:
             assert self._get_table(opened_order.side)[0].id == opened_order.id
 
             # It's a match
             qty = min(opened_order.qty, table[0].qty)
             assert qty != 0
             price = opened_order.price if opened_order.side == "BUY" else table[0].price
-            #print("Matched orders at {0} ({1}x).".format(price, qty))
+            # print("Matched orders at {0} ({1}x).".format(price, qty))
 
             # Opened order
             opened_order.qty -= qty
@@ -113,6 +113,7 @@ class Book:
             return order1.price > order2.price
         else:
             return order1.price < order2.price
+
 
 class Order:
     """
