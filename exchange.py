@@ -1,7 +1,13 @@
 import book
-
+from typing import Callable
+import datetime
 
 class Exchange:
+    """
+    Trading logic. This class provides opening and closing orders in asynchronous way provides callbacks on different
+    events.
+    """
+
     def __init__(self):
         self.next_clientid = 0
         self.book = book.Book()
@@ -11,11 +17,23 @@ class Exchange:
         # self.loop = loop
 
     def get_clientid(self) -> int:
+        """
+        Returns next available client id
+        """
         id = self.next_clientid
         self.next_clientid += 1
         return id
 
     async def open_order(self, orderid: str, clientid: int, side: str, price: int, qty: int) -> None:
+        """
+        Opens new trading order.
+        :param orderid: string id unique for a client
+        :param clientid: number of client
+        :param side: order side, "BUY" or "SELL"
+        :param price: desired price of order
+        :param qty: desired amount of equity
+        :return: None
+        """
         order = book.Order(orderid, clientid, side, price, qty)
         (order, filled) = self.book.open_order(order)
         self.stats["opened"] += 1
@@ -44,15 +62,28 @@ class Exchange:
                 await self.datastream_callback("orderbook", order.side, order.time, order.price, qty_left)
 
     async def cancel_order(self, clientid: str, orderid: str) -> None:
+        """
+        Removes order
+        :param clientid: string id unique for a client
+        :param orderid: number of client
+        :return: None
+        """
         order = self.book.remove_order(clientid, orderid)
         if self.datastream_callback:
             await self.datastream_callback("cancel", order.side, order.time, order.price, order.qty)
 
-    def set_callbacks(self, fill, datastream) -> None:
+    def set_callbacks(self, fill: Callable[[int, int, int, int], None], datastream: Callable[[str, str, datetime.time,
+                                                                                              int, int], None])-> None:
+        """
+        Sets callbacks i.e. functions, which will be called when an order is opened, closed or traded.
+        """
         self.fill_callback = fill
         self.datastream_callback = datastream
 
     def print_stats(self):
+        """
+        Prints statistics of server utilization e.g. number of opened or traded orders.
+        """
         print("Opened orders:", self.stats["opened"])
         print("Traded orders:", self.stats["traded"])
         print("Leftover SELL orders:", len(self.book._ask))

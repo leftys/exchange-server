@@ -1,6 +1,8 @@
 import heapq
-from datetime import datetime
+from typing import Tuple, List
 import copy
+
+from order import Order
 
 
 class Book:
@@ -26,10 +28,10 @@ class Book:
         elif side == "SELL":
             return self._ask
 
-    def open_order(self, order):
+    def open_order(self, order: Order):
         """
-        :param order: Book.Order object
-        :return: filled orders as a list of Book.Order objects.
+        :param order: Order object
+        :return: filled orders as a list of Order objects.
         """
         table = self._get_table(order.side)
         assert len(self._ask) == 0 or len(self._bid) == 0 or self._ask[0].price >= self._bid[0].price
@@ -37,22 +39,26 @@ class Book:
         self._update_price_qty(order.side, order.price, order.qty)
         return self._try_match_order(order)
 
-    def remove_order(self, clientid: str, orderid: str):
+    def remove_order(self, clientid: int, orderid: str) -> Order:
         """
         :param clientid Client id. (Has to be specified to resolve orderid conflicts between clients.)
         :param orderid: Order_id assigned by client during opening.
-        :return: The removed order as Book.Order.
+        :return: The removed order.
         """
         for side in ['BUY', 'SELL']:
             orders = self._get_table(side)
             for idx, order in enumerate(orders):
                 if order.clientid == clientid and order.id == orderid:
-                    orders[idx] = orders.pop()
-                    heapq.heapify(orders)
+                    if len(orders) > 1:
+                        orders[idx] = orders.pop()
+                        heapq.heapify(orders)
+                    else:
+                        del orders[idx]
                     self._update_price_qty(side, order.price, -order.qty)
                     return order
+        raise KeyError
 
-    def _try_match_order(self, opened_order):
+    def _try_match_order(self, opened_order: Order) -> Tuple[Order, List[Order]]:
         filled = []
         if len(self._bid) == 0 or len(self._ask) == 0:
             return opened_order, filled
@@ -81,15 +87,15 @@ class Book:
             filled.append(order_report)
             table[0].qty -= qty
             self._update_price_qty(order_report.side, order_report.price, -qty)
+
             if table[0].qty == 0:
                 assert table[0].id == heapq.heappop(table).id
-
             assert len(table) == 0 or table[0].qty > 0
             assert len(self._get_table(opened_order.side)) == 0 or self._get_table(opened_order.side)[0].qty > 0
 
         return opened_order, filled
 
-    def get_price_qty(self, side: str, price: int):
+    def get_price_qty(self, side: str, price: int) -> int:
         """
         :param side: Order side, "BUY" or "SELL".
         :param price: Price too look-up.
@@ -100,7 +106,7 @@ class Book:
         except KeyError:
             return 0
 
-    def _update_price_qty(self, side: str, price: int, qty: int):
+    def _update_price_qty(self, side: str, price: int, qty: int) -> None:
         try:
             self._order_by_price_idx[(side, price)] += qty
             if self._order_by_price_idx[(side, price)] == 0:
@@ -108,34 +114,8 @@ class Book:
         except KeyError:
             self._order_by_price_idx[(side, price)] = qty
 
-    def _matches(self, order1, order2):
+    def _matches(self, order1: Order, order2: Order) -> bool:
         if order1.side == "BUY":
             return order1.price > order2.price
         else:
             return order1.price < order2.price
-
-
-class Order:
-    """
-    Buy/sell order
-    """
-    def __init__(self, id: str, clientid: int, side: str, price: int, qty: int):
-        assert side in ["BUY", "SELL"]
-        self.id = id
-        self.clientid = clientid
-        self.side = side
-        self.price = price
-        self.price_traded = None
-        self.qty = qty
-        self.time = datetime.now()
-
-    def __lt__(self, other):
-        if self.price == other.price:
-            return self.time < other.time
-        if self.side == "BUY":
-            return self.price > other.price
-        else:
-            return self.price < other.price
-
-    def __repr__(self):
-        return "%s: %d@%d" % (self.side, self.qty, self.price)

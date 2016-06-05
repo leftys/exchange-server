@@ -2,6 +2,7 @@ import asyncio
 import asyncio.streams
 import json
 import datetime
+import exchange
 
 
 class Server:
@@ -9,19 +10,15 @@ class Server:
     TCP server processing client's messages and calling Exchange methods
     """
 
-    def __init__(self, host, port, exchange):
-        self.order_server = None  # encapsulates the server sockets
+    def __init__(self, host: str, port: int, exchange_obj: exchange.Exchange):
+        self.order_server = None
         self.datastream_server = None
         self.host = host
         self.port = port
         self.next_clientid = 0
-        self.exchange = exchange
+        self.exchange = exchange_obj
         self.exchange.set_callbacks(self.fill_order_report, self.send_datastream_report)
 
-        # this keeps track of all the clients that connected to our
-        # server.  It can be useful in some cases, for instance to
-        # kill client connections or to broadcast some data to all
-        # clients...
         self.clients = {}  # task -> (reader, writer)
         self.datastream_clients = {}  # task -> (reader, writer)
 
@@ -131,7 +128,7 @@ class Server:
                 message["side"] = translate[side]
             await self._send_json(writer, message)
 
-    def start(self, loop):
+    def start(self, loop: asyncio.AbstractEventLoop):
         """
         Starts the TCP server, so that it listens on port 7001.
         For each client that connects, the accept_client method gets
@@ -147,7 +144,7 @@ class Server:
                                          self.host, self.port + 1,
                                          loop=loop))
 
-    def stop(self, loop):
+    def stop(self, loop: asyncio.AbstractEventLoop):
         """
         Stops the TCP server, i.e. closes the listening socket(s).
         This method runs the loop until the server sockets are closed.
