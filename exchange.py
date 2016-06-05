@@ -7,6 +7,7 @@ class Exchange:
         self.book = book.Book()
         self.fill_callback = None
         self.datastream_callback = None
+        self.stats = {"opened": 0, "traded": 0}
         # self.loop = loop
 
     def get_clientid(self) -> int:
@@ -17,18 +18,20 @@ class Exchange:
     async def open_order(self, orderid: str, clientid: int, side: str, price: int, qty: int) -> None:
         order = book.Order(orderid, clientid, side, price, qty)
         (order, filled) = self.book.open_order(order)
+        self.stats["opened"] += 1
         order_was_traded = len(filled) > 0
         order_was_fully_traded = order.qty == 0
+        if order_was_traded:
+            self.stats["traded"] += 1
         if self.fill_callback and order_was_traded:
             for filled_order in [order] + filled:
                 await self.fill_callback(filled_order.clientid, filled_order.id, filled_order.price_traded, filled_order.qty)
         if self.datastream_callback:
             if order_was_traded:
                 # Notify about the conducted trade.
-                await self.datastream_callback("trade", None, order.time, order.price, order.qty)
+                await self.datastream_callback("trade", None, order.time, order.price_traded, qty-order.qty)
 
                 # Notify about the changed rows of the limit order book.
-                last_price = -1
                 for changed_order in filled: # We may have already notified about the first order.
                     await self.datastream_callback("orderbook", changed_order.side, changed_order.time, changed_order.price,
                                                    self.book.get_price_qty(changed_order.side, changed_order.price))
@@ -46,3 +49,14 @@ class Exchange:
     def set_callbacks(self, fill, datastream) -> None:
         self.fill_callback = fill
         self.datastream_callback = datastream
+
+    def print_stats(self):
+        print("Opened orders:", self.stats["opened"])
+        print("Traded orders:", self.stats["traded"])
+        print("Leftover SELL orders:", len(self.book._ask))
+        print("Leftover BUY orders:", len(self.book._bid))
+        print("Final spread: [%d %d]" % (self.book._bid[0].price, self.book._ask[0].price))
+        print("First 10 orders of both tables:")
+        print(self.book._bid[:10])
+        print(self.book._ask[:10])
+

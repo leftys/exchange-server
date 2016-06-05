@@ -12,15 +12,21 @@ def _stop_server(signame: str, server: Server, loop: asyncio.AbstractEventLoop) 
     print("Received signal %s: exiting." % signame)
     loop.stop()
 
+
+#def wakeup(loop):
+    # Call again
+#    loop.call_later(0.1, wakeup, loop)
+
+
 def main():
     loop = asyncio.get_event_loop()
+    #loop.call_later(0.1, wakeup, loop)
     print("Starting server.")
 
     # create Exchange
     exchange = Exchange()
 
     # create a TCP server and starts listening
-    #todo: rename?
     server = Server('localhost', 7001, exchange)
     server.start(loop)
 
@@ -31,6 +37,8 @@ def main():
     try:
         loop.run_forever()
     finally:
+        exchange.print_stats()
+        server.stop(loop)
         loop.close()
 
 

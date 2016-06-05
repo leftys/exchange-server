@@ -76,7 +76,7 @@ class Server:
             if not string:  # an empty string means the client disconnected
                 break
             data = json.loads(string.rstrip())
-            print("Received: ",data)
+            #print("Received: ",data)
             if data["message"] == "createOrder":
                 await self._send_json(client_writer,{
                     "message": "executionReport",
@@ -113,12 +113,13 @@ class Server:
             "message": "executionReport",
             "report": "FILL",
             "orderId": orderid,
-            "price": price_traded,
+            "price": price,
             "quantity": qty # Report how many were traded
         })
 
     async def send_datastream_report(self, type: str, side: str, time: datetime.time, price: int, qty: int) -> None:
         translate = {"BUY":"bid", "SELL":"ask"}
+        assert type != "trade" or qty != 0
         for (reader,writer) in self.datastream_clients.values():
             message = {
                 "type": type,
