@@ -10,9 +10,7 @@ from exchange import Exchange
 
 def _stop_server(signame: str, server: Server, loop: asyncio.AbstractEventLoop) -> None:
     print("Received signal %s: exiting." % signame)
-    server.stop(loop)
     loop.stop()
-
 
 # def wakeup(loop):
     # Call again

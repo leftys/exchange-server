@@ -89,7 +89,3 @@ class Exchange:
         print("Leftover SELL orders:", len(self.book._ask))
         print("Leftover BUY orders:", len(self.book._bid))
         print("Final spread: [%d %d]" % (self.book._bid[0].price, self.book._ask[0].price))
-        print("First 10 orders of both tables:")
-        print(self.book._bid[:10])
-        print(self.book._ask[:10])
-

@@ -23,13 +23,6 @@ class Server:
         self.datastream_clients = {}  # task -> (reader, writer)
 
     def _accept_client(self, client_reader, client_writer):
-        """
-        This method accepts a new client connection and creates a Task
-        to handle this client.  self.clients is updated to keep track
-        of the new client.
-        """
-
-        # start a new Task to handle this specific client connection
         clientid = self.exchange.get_clientid()
         task = asyncio.Task(self._handle_client(clientid, client_reader, client_writer))
         self.clients[clientid] = (client_reader, client_writer)
@@ -41,13 +34,6 @@ class Server:
         task.add_done_callback(client_done)
 
     def _accept_datastream(self, client_reader, client_writer):
-        """
-        This method accepts a new client connection and creates a Task
-        to handle this client.  self.clients is updated to keep track
-        of the new client.
-        """
-
-        # start a new Task to handle this specific client connection
         task = asyncio.Task(self._handle_datastream(client_reader, client_writer))
         self.datastream_clients[task] = (client_reader, client_writer)
 
@@ -58,7 +44,8 @@ class Server:
         task.add_done_callback(client_done)
 
     async def _send_json(self, writer, json_str):
-        writer.write((json.dumps(json_str) + "\n").encode("utf-8"))
+        writer.write((json.dumps(json_str)).encode("utf-8"))
+        writer.write("\n".encode("utf-8"))
         await writer.drain()
 
     async def _handle_client(self, clientid, client_reader, client_writer):
@@ -69,24 +56,27 @@ class Server:
         out one or more lines back to the client with the result.
         """
         while True:
-            string = (await client_reader.readline()).decode("utf-8")
-            if not string:  # an empty string means the client disconnected
+            try:
+                string = (await client_reader.readline()).decode("utf-8")
+                if not string:  # an empty string means the client disconnected
+                    break
+                data = json.loads(string.rstrip())
+                # print("Received: ",data)
+                if data["message"] == "createOrder":
+                    await self._send_json(client_writer, {
+                        "message": "executionReport",
+                        "orderId": data["orderId"],
+                        "report": "NEW"
+                    })
+                    await self.exchange.open_order(data["orderId"], clientid, data["side"], data["price"], data["quantity"])
+                elif data["message"] == "cancelOrder":
+                    await self._send_json(client_writer, {
+                        "message": "cancelOrder",
+                        "orderId": data["orderId"]
+                    })
+                    await self.exchange.cancel_order(clientid, data["orderId"])
+            except ConnectionResetError:
                 break
-            data = json.loads(string.rstrip())
-            # print("Received: ",data)
-            if data["message"] == "createOrder":
-                await self._send_json(client_writer, {
-                    "message": "executionReport",
-                    "orderId": data["orderId"],
-                    "report": "NEW"
-                })
-                await self.exchange.open_order(data["orderId"], clientid, data["side"], data["price"], data["quantity"])
-            elif data["message"] == "cancelOrder":
-                await self._send_json(client_writer, {
-                    "message": "cancelOrder",
-                    "orderId": data["orderId"]
-                })
-                await self.exchange.cancel_order(clientid, data["orderId"])
         return clientid
 
     async def _handle_datastream(self, client_reader, client_writer):
@@ -157,4 +147,3 @@ class Server:
             self.datastream_server.close()
             loop.run_until_complete(self.datastream_server.wait_closed())
             self.datastream_server = None
-
