@@ -40,7 +40,7 @@ class Exchange:
         order_was_traded = len(filled) > 0
         order_was_fully_traded = order.qty == 0
         if order_was_traded:
-            self.stats["traded"] += 1
+            self.stats["traded"] += 2
         if self.fill_callback and order_was_traded:
             for filled_order in [order] + filled:
                 await self.fill_callback(filled_order.clientid, filled_order.id, filled_order.price_traded,
@@ -88,4 +88,3 @@ class Exchange:
         print("Traded orders:", self.stats["traded"])
         print("Leftover SELL orders:", len(self.book._ask))
         print("Leftover BUY orders:", len(self.book._bid))
-        print("Final spread: [%d %d]" % (self.book._bid[0].price, self.book._ask[0].price))

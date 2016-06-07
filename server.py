@@ -3,58 +3,67 @@ import asyncio.streams
 import json
 import datetime
 import exchange
+import abc
 
 
-class Server:
+class GenericServer(metaclass=abc.ABCMeta):
     """
-    TCP server processing client's messages and calling Exchange methods
+    TCP server base class.
     """
 
     def __init__(self, host: str, port: int, exchange_obj: exchange.Exchange):
-        self.order_server = None
-        self.datastream_server = None
+        self.server = None
         self.host = host
         self.port = port
         self.next_clientid = 0
         self.exchange = exchange_obj
-        self.exchange.set_callbacks(self.fill_order_report, self.send_datastream_report)
-
         self.clients = {}  # task -> (reader, writer)
-        self.datastream_clients = {}  # task -> (reader, writer)
+
+    def _client_done(self, task):
+        try:
+            print("Client %d disconnected" % task.result())
+            del self.clients[task.result()]
+        except:
+            print("Client forced to disconnect.")
 
     def _accept_client(self, client_reader, client_writer):
         clientid = self.exchange.get_clientid()
         task = asyncio.Task(self._handle_client(clientid, client_reader, client_writer))
         self.clients[clientid] = (client_reader, client_writer)
+        task.add_done_callback(self._client_done)
 
-        def client_done(task):
-            print("Client {0} disconnected".format(task.result()))  # , file=sys.stderr)
-            del self.clients[task.result()]
-
-        task.add_done_callback(client_done)
-
-    def _accept_datastream(self, client_reader, client_writer):
-        task = asyncio.Task(self._handle_datastream(client_reader, client_writer))
-        self.datastream_clients[task] = (client_reader, client_writer)
-
-        def client_done(task):
-            print("Datastream client disconnected.")  # , file=sys.stderr)
-            del self.datastream_clients[task]
-
-        task.add_done_callback(client_done)
+    @abc.abstractmethod
+    async def _handle_client(self, clientid, client_reader, client_writer):
+        raise NotImplementedError("This is a method of abstract class")
 
     async def _send_json(self, writer, json_str):
         writer.write((json.dumps(json_str)).encode("utf-8"))
         writer.write("\n".encode("utf-8"))
         await writer.drain()
 
+    def start(self, loop: asyncio.AbstractEventLoop):
+        """Start listening on specified address and port."""
+        self.server = loop.run_until_complete(
+            asyncio.streams.start_server(self._accept_client,
+                                         self.host, self.port,
+                                         loop=loop))
+
+    def stop(self, loop: asyncio.AbstractEventLoop):
+        """Abort all client connections and stop listening."""
+        if self.server is not None:
+            self.server.close()
+            for task in asyncio.Task.all_tasks():
+                task.cancel()
+            loop.run_until_complete(self.server.wait_closed())
+            self.server = None
+
+
+class OrderServer(GenericServer):
+    """
+    Server handling order requests of clients.
+    """
     async def _handle_client(self, clientid, client_reader, client_writer):
-        """
-        This method actually does the work to handle the requests for
-        a specific client.  The protocol is line oriented, so there is
-        a main loop that reads a line with a request and then sends
-        out one or more lines back to the client with the result.
-        """
+        print("Client %d connected." % clientid)
         while True:
             try:
                 string = (await client_reader.readline()).decode("utf-8")
@@ -68,7 +77,8 @@ class Server:
                         "orderId": data["orderId"],
                         "report": "NEW"
                     })
-                    await self.exchange.open_order(data["orderId"], clientid, data["side"], data["price"], data["quantity"])
+                    await self.exchange.open_order(data["orderId"], clientid, data["side"], data["price"],
+                                                   data["quantity"])
                 elif data["message"] == "cancelOrder":
                     await self._send_json(client_writer, {
                         "message": "cancelOrder",
@@ -77,19 +87,7 @@ class Server:
                     await self.exchange.cancel_order(clientid, data["orderId"])
             except ConnectionResetError:
                 break
-        return clientid
-
-    async def _handle_datastream(self, client_reader, client_writer):
-        """
-        This method actually does the work to handle the requests for
-        a specific client.  The protocol is line oriented, so there is
-        a main loop that reads a line with a request and then sends
-        out one or more lines back to the client with the result.
-        """
-        while True:
-            string = await client_reader.readline()
-            if not string:  # an empty string means the client disconnected
-                break
+        return clientid  # return clientid as task result, so we can recognize the disconnected client in _client_done()
 
     async def fill_order_report(self, clientid: int, orderid: int, price: int, qty: int) -> None:
         if clientid not in self.clients:
@@ -104,10 +102,28 @@ class Server:
             "quantity": qty  # Report how many were traded
         })
 
+
+class DatastreamServer(GenericServer):
+    """
+    Server providing anonymous data, which we call "datastream".
+    """
+    def _client_done(self, task):
+        try:
+            del self.clients[task.result()]
+        except:
+            print("Datastream client forced to disconnect.")
+
+    async def _handle_client(self, clientid, client_reader, client_writer):
+        while True:
+            string = await client_reader.readline()
+            if not string:  # an empty string means the client disconnected
+                break
+        return clientid  # return clientid as task result, so we can recognize the disconnected client in _client_done()
+
     async def send_datastream_report(self, type: str, side: str, time: datetime.time, price: int, qty: int) -> None:
         translate = {"BUY": "bid", "SELL": "ask"}
         assert type != "trade" or qty != 0
-        for (reader, writer) in self.datastream_clients.values():
+        for (reader, writer) in self.clients.values():
             message = {
                 "type": type,
                 "price": price,
@@ -117,33 +133,3 @@ class Server:
             if side:  # only for some types of reports, not for "trade"
                 message["side"] = translate[side]
             await self._send_json(writer, message)
-
-    def start(self, loop: asyncio.AbstractEventLoop):
-        """
-        Starts the TCP server, so that it listens on port 7001.
-        For each client that connects, the accept_client method gets
-        called.  This method runs the loop until the server sockets
-        are ready to accept connections.
-        """
-        self.order_server = loop.run_until_complete(
-            asyncio.streams.start_server(self._accept_client,
-                                         self.host, self.port,
-                                         loop=loop))
-        self.datastream_server = loop.run_until_complete(
-            asyncio.streams.start_server(self._accept_datastream,
-                                         self.host, self.port + 1,
-                                         loop=loop))
-
-    def stop(self, loop: asyncio.AbstractEventLoop):
-        """
-        Stops the TCP server, i.e. closes the listening socket(s).
-        This method runs the loop until the server sockets are closed.
-        """
-        if self.order_server is not None:
-            self.order_server.close()
-            loop.run_until_complete(self.order_server.wait_closed())
-            self.order_server = None
-        if self.datastream_server is not None:
-            self.datastream_server.close()
-            loop.run_until_complete(self.datastream_server.wait_closed())
-            self.datastream_server = None
