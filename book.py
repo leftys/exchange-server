@@ -39,7 +39,7 @@ class Book:
         self._update_price_qty(order.side, order.price, order.qty)
         return self._try_match_order(order)
 
-    def remove_order(self, clientid: int, orderid: str) -> Order:
+    def remove_order(self, clientid: str, orderid: str) -> Order:
         """
         :param clientid Client id. (Has to be specified to resolve orderid conflicts between clients.)
         :param orderid: Order_id assigned by client during opening.
@@ -71,7 +71,6 @@ class Book:
             qty = min(opened_order.qty, table[0].qty)
             assert qty != 0
             price = opened_order.price if opened_order.side == "BUY" else table[0].price
-            # print("Matched orders at {0} ({1}x).".format(price, qty))
 
             # Opened order
             opened_order.qty -= qty

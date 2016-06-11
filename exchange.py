@@ -2,6 +2,7 @@ import book
 from typing import Callable
 import datetime
 
+
 class Exchange:
     """
     Trading logic. This class provides opening and closing orders in asynchronous way provides callbacks on different
@@ -72,7 +73,7 @@ class Exchange:
         if self.datastream_callback:
             await self.datastream_callback("cancel", order.side, order.time, order.price, order.qty)
 
-    def set_callbacks(self, fill: Callable[[int, int, int, int], None], datastream: Callable[[str, str, datetime.time,
+    def set_callbacks(self, fill: Callable[[str, int, int, int], None], datastream: Callable[[str, str, datetime.time,
                                                                                               int, int], None])-> None:
         """
         Sets callbacks i.e. functions, which will be called when an order is opened, closed or traded.

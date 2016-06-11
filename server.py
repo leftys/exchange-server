@@ -89,9 +89,9 @@ class OrderServer(GenericServer):
                 break
         return clientid  # return clientid as task result, so we can recognize the disconnected client in _client_done()
 
-    async def fill_order_report(self, clientid: int, orderid: int, price: int, qty: int) -> None:
+    async def fill_order_report(self, clientid: str, orderid: int, price: int, qty: int) -> None:
         if clientid not in self.clients:
-            print("Client {0} already disconnected. Not sending fill report.".format(clientid))
+            print("Client %s already disconnected. Not sending fill report." % clientid)
             return
         (reader, writer) = self.clients[clientid]
         await self._send_json(writer, {
