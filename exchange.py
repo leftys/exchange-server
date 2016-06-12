@@ -62,11 +62,11 @@ class Exchange:
                 qty_left = self.book.get_price_qty(order.side, order.price)
                 await self.datastream_callback("orderbook", order.side, order.time, order.price, qty_left)
 
-    async def cancel_order(self, clientid: str, orderid: str) -> None:
+    async def cancel_order(self, clientid: int, orderid: str) -> None:
         """
         Removes order
-        :param clientid: string id unique for a client
-        :param orderid: number of client
+        :param clientid: int id of client
+        :param orderid: order id unique for the client
         :return: None
         """
         order = self.book.remove_order(clientid, orderid)
@@ -77,6 +77,10 @@ class Exchange:
                                                                                               int, int], None])-> None:
         """
         Sets callbacks i.e. functions, which will be called when an order is opened, closed or traded.
+        :param fill: Method, that will be called when an order was filled. That function should accept clientid,
+        orderid, price and qty.
+        :param datastream: Method, that will be called when there are data for the public/datastream channel. That
+        function should accept order_type, side ("BUY" or "SELL"), time as datetime.time, price and qty.
         """
         self.fill_callback = fill
         self.datastream_callback = datastream

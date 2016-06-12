@@ -25,7 +25,7 @@ class TestExchange(TestCase):
         loop = asyncio.get_event_loop()
         e = exchange.Exchange()
         loop.run_until_complete(e.open_order("123", 0, "BUY", 150, 200))
-        loop.run_until_complete(e.cancel_order("0", "123"))
+        loop.run_until_complete(e.cancel_order(0, "123"))
         self.assertEqual(len(e.book._bid), 0, "Order was not canceled")
 
     def test_set_callbacks(self):

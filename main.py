@@ -13,14 +13,15 @@ def _stop_server(signame: str, loop: asyncio.AbstractEventLoop) -> None:
     print("Received signal %s: exiting." % signame)
     loop.stop()
 
-# def wakeup(loop):
+
+def wakeup(loop, exchange):
     # Call again
-#    loop.call_later(0.1, wakeup, loop)
+    exchange.print_stats()
+    loop.call_later(1, wakeup, loop, exchange)
 
 
 def main():
     loop = asyncio.get_event_loop()
-    # loop.call_later(0.1, wakeup, loop)
     print("Starting server.")
 
     # create Exchange
@@ -40,6 +41,7 @@ def main():
     for signame in ('SIGINT', 'SIGTERM'):
         loop.add_signal_handler(getattr(signal, signame), _stop_server, signame, loop)
 
+    loop.call_later(0.01, wakeup, loop, exchange)
     try:
         loop.run_forever()
     finally:
