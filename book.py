@@ -1,5 +1,6 @@
 import heapq
 from typing import Tuple, List
+from decimal import Decimal
 import copy
 
 from order import Order
@@ -94,7 +95,7 @@ class Book:
 
         return opened_order, filled
 
-    def get_price_qty(self, side: str, price: int) -> int:
+    def get_price_qty(self, side: str, price: Decimal) -> int:
         """
         :param side: Order side, "BUY" or "SELL".
         :param price: Price too look-up.
@@ -105,7 +106,7 @@ class Book:
         except KeyError:
             return 0
 
-    def _update_price_qty(self, side: str, price: int, qty: int) -> None:
+    def _update_price_qty(self, side: str, price: Decimal, qty: int) -> None:
         try:
             self._order_by_price_idx[(side, price)] += qty
             if self._order_by_price_idx[(side, price)] == 0:

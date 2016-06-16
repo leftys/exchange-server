@@ -1,11 +1,11 @@
 from datetime import datetime
-
+from decimal import Decimal
 
 class Order:
     """
     Buy/sell order with defined "<" operator.
     """
-    def __init__(self, id: str, clientid: int, side: str, price: int, qty: int):
+    def __init__(self, id: str, clientid: int, side: str, price: Decimal, qty: int):
         assert side in ["BUY", "SELL"]
         self.id = id
         self.clientid = clientid
@@ -24,4 +24,4 @@ class Order:
             return self.price < other.price
 
     def __repr__(self) -> str:
-        return "%s: %d@%d" % (self.side, self.qty, self.price)
+        return "%s: %d@%f" % (self.side, self.qty, self.price)

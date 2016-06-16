@@ -1,9 +1,13 @@
 from unittest import TestCase
 import exchange
 import asyncio
+from decimal import Decimal, getcontext
 
 
 class TestExchange(TestCase):
+    def setUp(self):
+        getcontext().prec = 6
+
     def test_get_clientid(self):
         e = exchange.Exchange()
         id1 = e.get_clientid()
@@ -14,17 +18,41 @@ class TestExchange(TestCase):
         loop = asyncio.get_event_loop()
         e = exchange.Exchange()
         tasks = [
-            e.open_order("123", 0, "BUY", 150, 200),
-            e.open_order("234", 1, "SELL", 149, 100),
+            e.open_order("123", 0, "BUY", Decimal(150), 200),
+            e.open_order("234", 1, "SELL", Decimal(149), 100),
         ]
         loop.run_until_complete(asyncio.wait(tasks))
         self.assertTrue(len(e.book._ask) == 0, "Ask table not resolved")
         self.assertTrue(len(e.book._bid) == 1, "Bid order deleted")
 
+    def test_decimal(self):
+        loop = asyncio.get_event_loop()
+        e = exchange.Exchange()
+        tasks = [
+            e.open_order("123", 0, "BUY", Decimal(1.000001), 200),
+            e.open_order("124", 0, "BUY", Decimal(1.000003), 200),
+            e.open_order("234", 1, "SELL", Decimal(1.000002), 400),
+        ]
+        loop.run_until_complete(asyncio.wait(tasks))
+        self.assertEqual(len(e.book._ask), 1)
+        self.assertEqual(len(e.book._bid), 1)
+
+    def dont_test_decimal_precision_limit(self):
+        loop = asyncio.get_event_loop()
+        e = exchange.Exchange()
+        tasks = [
+            e.open_order("123", 0, "BUY", Decimal(1.0000000001), 200),
+            e.open_order("124", 0, "BUY", Decimal(1.0000000003), 200),
+            e.open_order("234", 1, "SELL", Decimal(1.0000000002), 400),
+        ]
+        loop.run_until_complete(asyncio.wait(tasks))
+        self.assertEqual(len(e.book._ask), 0, "Comparison uses more digits then specified")
+        self.assertEqual(len(e.book._bid), 0, "Comparison uses more digits then specified")
+
     def test_cancel_order(self):
         loop = asyncio.get_event_loop()
         e = exchange.Exchange()
-        loop.run_until_complete(e.open_order("123", 0, "BUY", 150, 200))
+        loop.run_until_complete(e.open_order("123", 0, "BUY", Decimal(150), 200))
         loop.run_until_complete(e.cancel_order(0, "123"))
         self.assertEqual(len(e.book._bid), 0, "Order was not canceled")
 
@@ -44,8 +72,8 @@ class TestExchange(TestCase):
 
         e.set_callbacks(fill_callback, datastream_callback)
         tasks = [
-            e.open_order("223", 0, "BUY", 150, 200),
-            e.open_order("334", 1, "SELL", 149, 100),
+            e.open_order("223", 0, "BUY", Decimal(150), 200),
+            e.open_order("334", 1, "SELL", Decimal(149), 100),
         ]
         loop.run_until_complete(asyncio.wait(tasks))
         self.assertEqual(len(fill_report), 2, "Fill callback failed")

@@ -1,6 +1,7 @@
 import book
 from typing import Callable
 import datetime
+from decimal import Decimal, getcontext
 
 
 class Exchange:
@@ -15,7 +16,7 @@ class Exchange:
         self.fill_callback = None
         self.datastream_callback = None
         self.stats = {"opened": 0, "traded": 0}
-        # self.loop = loop
+        getcontext().prec = 16
 
     def get_clientid(self) -> int:
         """
@@ -25,13 +26,13 @@ class Exchange:
         self.next_clientid += 1
         return id
 
-    async def open_order(self, orderid: str, clientid: int, side: str, price: int, qty: int) -> None:
+    async def open_order(self, orderid: str, clientid: int, side: str, price: Decimal, qty: int) -> None:
         """
         Opens new trading order.
         :param orderid: string id unique for a client
         :param clientid: number of client
         :param side: order side, "BUY" or "SELL"
-        :param price: desired price of order
+        :param price: desired price of order as str or decimal.Decimal
         :param qty: desired amount of equity
         :return: None
         """
@@ -43,7 +44,8 @@ class Exchange:
         if order_was_traded:
             self.stats["traded"] += 2
         if self.fill_callback and order_was_traded:
-            for filled_order in [order] + filled:
+            await self.fill_callback(order.clientid, order.id, order.price_traded, order.qty)
+            for filled_order in filled:
                 await self.fill_callback(filled_order.clientid, filled_order.id, filled_order.price_traded,
                                          filled_order.qty)
         if self.datastream_callback:
@@ -73,8 +75,8 @@ class Exchange:
         if self.datastream_callback:
             await self.datastream_callback("cancel", order.side, order.time, order.price, order.qty)
 
-    def set_callbacks(self, fill: Callable[[str, int, int, int], None], datastream: Callable[[str, str, datetime.time,
-                                                                                              int, int], None])-> None:
+    def set_callbacks(self, fill: Callable[[str, int, Decimal, int], None], datastream: Callable[[str, str, datetime.time,
+                                                                                        Decimal, int], None])-> None:
         """
         Sets callbacks i.e. functions, which will be called when an order is opened, closed or traded.
         :param fill: Method, that will be called when an order was filled. That function should accept clientid,

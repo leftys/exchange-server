@@ -1,10 +1,16 @@
 import asyncio
 import asyncio.streams
-import json
 import datetime
-import exchange
 import abc
+from decimal import Decimal
 
+# Use faster json module when available
+try:
+    import ujson as json
+except ImportError:
+    import json
+
+import exchange
 
 class GenericServer(metaclass=abc.ABCMeta):
     """
@@ -77,7 +83,8 @@ class OrderServer(GenericServer):
                         "orderId": data["orderId"],
                         "report": "NEW"
                     })
-                    await self.exchange.open_order(data["orderId"], clientid, data["side"], data["price"],
+                    # await asyncio.sleep(0.001)
+                    await self.exchange.open_order(data["orderId"], clientid, data["side"], Decimal(data["price"]),
                                                    data["quantity"])
                 elif data["message"] == "cancelOrder":
                     await self._send_json(client_writer, {
@@ -89,7 +96,7 @@ class OrderServer(GenericServer):
                 break
         return clientid  # return clientid as task result, so we can recognize the disconnected client in _client_done()
 
-    async def fill_order_report(self, clientid: str, orderid: int, price: int, qty: int) -> None:
+    async def fill_order_report(self, clientid: str, orderid: int, price: Decimal, qty: int) -> None:
         if clientid not in self.clients:
             print("Client %s already disconnected. Not sending fill report." % clientid)
             return
@@ -98,7 +105,7 @@ class OrderServer(GenericServer):
             "message": "executionReport",
             "report": "FILL",
             "orderId": orderid,
-            "price": price,
+            "price": str(price),
             "quantity": qty  # Report how many were traded
         })
 
@@ -120,13 +127,13 @@ class DatastreamServer(GenericServer):
                 break
         return clientid  # return clientid as task result, so we can recognize the disconnected client in _client_done()
 
-    async def send_datastream_report(self, type: str, side: str, time: datetime.time, price: int, qty: int) -> None:
+    async def send_datastream_report(self, type: str, side: str, time: datetime.time, price: Decimal, qty: int) -> None:
         translate = {"BUY": "bid", "SELL": "ask"}
         assert type != "trade" or qty != 0
         for (reader, writer) in self.clients.values():
             message = {
                 "type": type,
-                "price": price,
+                "price": str(price),
                 "quantity": qty,
                 "time": time.timestamp(), # todo: overit ze se to posila spravne
             }
