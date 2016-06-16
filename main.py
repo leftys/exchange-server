@@ -4,6 +4,7 @@
 
 import asyncio
 import signal
+import argparse
 
 from server import OrderServer, DatastreamServer
 from exchange import Exchange
@@ -14,22 +15,26 @@ def _stop_server(signame: str, loop: asyncio.AbstractEventLoop) -> None:
     loop.stop()
 
 
-def wakeup(loop, exchange):
+def _stats_wakeup(loop, exchange):
     # Call again
     exchange.print_stats()
-    loop.call_later(1, wakeup, loop, exchange)
+    loop.call_later(1, _stats_wakeup, loop, exchange)
 
 
 def main():
     loop = asyncio.get_event_loop()
-    print("Starting server.")
+    parser = argparse.ArgumentParser("Stock exchange simulation server")
+    parser.add_argument("--order-port", type=int, default=7001, help="Port of order/private channel")
+    parser.add_argument("--datastream-port", type=int, default=7002, help="Port of datastream/public channel")
+    parser.add_argument("--print-stats", action='store_true', help="Print statistics of open orders")
+    args = parser.parse_args()
 
     # create Exchange
     exchange = Exchange()
 
     # create TCP servers and start listening
-    order_server = OrderServer("localhost", 7001, exchange)
-    datastream_server = DatastreamServer("localhost", 7002, exchange)
+    order_server = OrderServer("localhost", args.order_port, exchange)
+    datastream_server = DatastreamServer("localhost", args.datastream_port, exchange)
     exchange.set_callbacks(order_server.fill_order_report, datastream_server.send_datastream_report)
     try:
         order_server.start(loop)
@@ -41,11 +46,14 @@ def main():
     for signame in ('SIGINT', 'SIGTERM'):
         loop.add_signal_handler(getattr(signal, signame), _stop_server, signame, loop)
 
-    loop.call_later(0.01, wakeup, loop, exchange)
+    if args.print_stats:
+        loop.call_soon(_stats_wakeup, loop, exchange)
+    print("Stock exchange simulation server started.")
     try:
         loop.run_forever()
     finally:
-        exchange.print_stats()
+        if args.print_stats:
+            exchange.print_stats()
         order_server.stop(loop)
         loop.close()
 
