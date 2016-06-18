@@ -6,8 +6,8 @@ import asyncio
 import signal
 import argparse
 
-from server import OrderServer, DatastreamServer
-from exchange import Exchange
+from exchange.server import OrderServer, DatastreamServer
+from exchange.exchange import Exchange
 
 
 def _stop_server(signame: str, loop: asyncio.AbstractEventLoop) -> None:

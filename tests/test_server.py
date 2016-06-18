@@ -1,8 +1,9 @@
 from unittest import TestCase
-import exchange
 import asyncio
-from server import OrderServer, DatastreamServer
-import benchmark
+
+from exchange import exchange
+from exchange.server import OrderServer, DatastreamServer
+from tests import benchmark
 
 
 class TestServer(TestCase):

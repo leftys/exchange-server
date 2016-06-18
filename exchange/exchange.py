@@ -1,7 +1,8 @@
-import book
 from typing import Callable
 import datetime
 from decimal import Decimal, getcontext
+
+from exchange import book
 
 
 class Exchange:

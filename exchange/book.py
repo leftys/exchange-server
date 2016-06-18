@@ -3,7 +3,7 @@ from typing import Tuple, List
 from decimal import Decimal
 import copy
 
-from order import Order
+from exchange.order import Order
 
 
 class Book:

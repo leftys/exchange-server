@@ -1,7 +1,8 @@
 from unittest import TestCase
-import exchange
 import asyncio
 from decimal import Decimal
+
+from exchange import exchange
 
 
 class TestExchange(TestCase):
@@ -87,8 +88,9 @@ class TestExchange(TestCase):
 
         (fill_report, datastream_report) = self._open_orders_and_get_reports(e, tasks)
 
-        datastream_report # Ignore type, side and datetime
-        self.assertEqual(price_and_qty, )
+        # todo
+        # datastream_report # Ignore type, side and datetime
+        # self.assertEqual(price_and_qty, )
         self.assertEqual(len(datastream_report), 3, "Datastream callback returned redundant items.")
 
         # [('orderbook', 'BUY', datetime.datetime(2016, 6, 18, 12, 41, 39, 986376), Decimal('150'), 200),

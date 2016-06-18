@@ -11,7 +11,7 @@ try:
 except ImportError:
     import json
 
-import exchange
+from exchange import exchange
 
 
 class GenericServer(metaclass=abc.ABCMeta):
