@@ -43,9 +43,8 @@ class GenericServer(metaclass=abc.ABCMeta):
         raise NotImplementedError("This is a method of abstract class")
 
     async def _send_json(self, writer, json_str):
-        writer.write((json.dumps(json_str)).encode("utf-8"))
-        writer.write("\n".encode("utf-8"))
-        await writer.drain()
+        writer.write(json.dumps(json_str).encode())
+        writer.write("\n".encode())
 
     def start(self, loop: asyncio.AbstractEventLoop):
         """Start listening on specified address and port."""
@@ -97,6 +96,10 @@ class OrderServer(GenericServer):
         return clientid  # return clientid as task result, so we can recognize the disconnected client in _client_done()
 
     async def fill_order_report(self, clientid: str, orderid: int, price: Decimal, qty: int) -> None:
+        """
+        Sends report about order execution to client.
+        Here qty means the number of traded stocks, not remaining.
+        """
         if clientid not in self.clients:
             print("Client %s already disconnected. Not sending fill report." % clientid)
             return
@@ -106,7 +109,7 @@ class OrderServer(GenericServer):
             "report": "FILL",
             "orderId": orderid,
             "price": str(price),
-            "quantity": qty  # Report how many were traded
+            "quantity": qty
         })
 
 
@@ -128,6 +131,10 @@ class DatastreamServer(GenericServer):
         return clientid  # return clientid as task result, so we can recognize the disconnected client in _client_done()
 
     async def send_datastream_report(self, type: str, side: str, time: datetime.time, price: Decimal, qty: int) -> None:
+        """
+        Sends report about changed book to public/datastream channel.
+        Side can be None for 'trade' reports.
+        """
         translate = {"BUY": "bid", "SELL": "ask"}
         assert type != "trade" or qty != 0
         for (reader, writer) in self.clients.values():
@@ -135,7 +142,7 @@ class DatastreamServer(GenericServer):
                 "type": type,
                 "price": str(price),
                 "quantity": qty,
-                "time": time.timestamp(), # todo: overit ze se to posila spravne
+                "time": time.timestamp(),  # todo: overit ze se to posila spravne
             }
             if side:  # only for some types of reports, not for "trade"
                 message["side"] = translate[side]

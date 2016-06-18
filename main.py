@@ -11,18 +11,21 @@ from exchange import Exchange
 
 
 def _stop_server(signame: str, loop: asyncio.AbstractEventLoop) -> None:
+    """Stop upon receiving signal signame"""
     print("Received signal %s: exiting." % signame)
     loop.stop()
 
 
 def _stats_wakeup(loop, exchange):
-    # Call again
+    """Prints stats every second"""
     exchange.print_stats()
     loop.call_later(1, _stats_wakeup, loop, exchange)
 
 
 def main():
     loop = asyncio.get_event_loop()
+
+    # Evaluate cmdline args
     parser = argparse.ArgumentParser("Stock exchange simulation server")
     parser.add_argument("--order-port", type=int, default=7001, help="Port of order/private channel")
     parser.add_argument("--datastream-port", type=int, default=7002, help="Port of datastream/public channel")
@@ -46,8 +49,10 @@ def main():
     for signame in ('SIGINT', 'SIGTERM'):
         loop.add_signal_handler(getattr(signal, signame), _stop_server, signame, loop)
 
+    # Print stats every second if requested
     if args.print_stats:
         loop.call_soon(_stats_wakeup, loop, exchange)
+
     print("Stock exchange simulation server started.")
     try:
         loop.run_forever()

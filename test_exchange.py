@@ -5,8 +5,6 @@ from decimal import Decimal, getcontext
 
 
 class TestExchange(TestCase):
-    def setUp(self):
-        getcontext().prec = 6
 
     def test_get_clientid(self):
         e = exchange.Exchange()
@@ -36,18 +34,6 @@ class TestExchange(TestCase):
         loop.run_until_complete(asyncio.wait(tasks))
         self.assertEqual(len(e.book._ask), 1)
         self.assertEqual(len(e.book._bid), 1)
-
-    def dont_test_decimal_precision_limit(self):
-        loop = asyncio.get_event_loop()
-        e = exchange.Exchange()
-        tasks = [
-            e.open_order("123", 0, "BUY", Decimal(1.0000000001), 200),
-            e.open_order("124", 0, "BUY", Decimal(1.0000000003), 200),
-            e.open_order("234", 1, "SELL", Decimal(1.0000000002), 400),
-        ]
-        loop.run_until_complete(asyncio.wait(tasks))
-        self.assertEqual(len(e.book._ask), 0, "Comparison uses more digits then specified")
-        self.assertEqual(len(e.book._bid), 0, "Comparison uses more digits then specified")
 
     def test_cancel_order(self):
         loop = asyncio.get_event_loop()
