@@ -2,6 +2,7 @@ import asyncio
 import asyncio.streams
 import datetime
 import abc
+import sys
 from decimal import Decimal
 
 # Use faster json module when available
@@ -44,8 +45,14 @@ class GenericServer(metaclass=abc.ABCMeta):
         raise NotImplementedError("This is a method of abstract class")
 
     async def _send_json(self, writer, json_str):
-        writer.write(json.dumps(json_str).encode())
-        writer.write("\n".encode())
+        if writer.transport._conn_lost:  # Workaround of https://github.com/aaugustin/websockets/issues/84
+            raise ConnectionResetError()
+        try:
+            writer.write(json.dumps(json_str).encode())
+            writer.write("\n".encode())
+        except Exception as ex:
+            print("Write failed:\n%s" % ex.with_traceback(), file=sys.stderr)
+
 
     def start(self, loop: asyncio.AbstractEventLoop):
         """Start listening on specified address and port."""
@@ -76,7 +83,6 @@ class OrderServer(GenericServer):
                 if not string:  # an empty string means the client disconnected
                     break
                 data = json.loads(string.rstrip())
-                # print("Received: ",data)
                 if data["message"] == "createOrder":
                     await self._send_json(client_writer, {
                         "message": "executionReport",
@@ -101,8 +107,7 @@ class OrderServer(GenericServer):
         Sends report about order execution to client.
         Here qty means the number of traded stocks, not remaining.
         """
-        if clientid not in self.clients:
-            print("Client %s already disconnected. Not sending fill report." % clientid)
+        if clientid not in self.clients:  # Client already disconencted. Don't send the fill report.
             return
         (reader, writer) = self.clients[clientid]
         await self._send_json(writer, {
@@ -122,7 +127,7 @@ class DatastreamServer(GenericServer):
         try:
             del self.clients[task.result()]
         except:
-            print("Datastream client forced to disconnect.")
+            print("Datastream client forced to disconnect.", file=sys.stderr)
 
     async def _handle_client(self, clientid, client_reader, client_writer):
         while True:

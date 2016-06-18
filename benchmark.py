@@ -36,6 +36,8 @@ async def benchmark(host, port, max_orders=0, sleep_time=0):
         await asyncio.sleep(sleep_time)
     except KeyboardInterrupt:
         print("Ctrl-C pressed, aborting.")
+    except ConnectionResetError:
+        print("Connection lost.")
     finally:
         writer.close()
         incoming.cancel()
@@ -65,6 +67,8 @@ async def network_benchmark(host, port, max_orders=0, sleep_time=0):
         await asyncio.sleep(sleep_time)
     except KeyboardInterrupt:
         print("Ctrl-C pressed, aborting.")
+    except ConnectionResetError:
+        print("Connection lost.")
     finally:
         writer.close()
         incoming.cancel()
