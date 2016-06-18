@@ -23,7 +23,6 @@ class TestServer(TestCase):
         self.assertEqual(e.stats["opened"], 1000)
         self.assertGreater(e.stats["traded"], 500)
 
-
     def test_order_network_benchmark(self):
         loop = asyncio.get_event_loop()
         e = exchange.Exchange()

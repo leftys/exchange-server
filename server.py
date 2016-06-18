@@ -12,6 +12,7 @@ except ImportError:
 
 import exchange
 
+
 class GenericServer(metaclass=abc.ABCMeta):
     """
     TCP server base class.

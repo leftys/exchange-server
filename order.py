@@ -1,6 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
+
 class Order:
     """
     Buy/sell order with defined "<" operator.
@@ -25,3 +26,4 @@ class Order:
 
     def __repr__(self) -> str:
         return "%s: %d@%f" % (self.side, self.qty, self.price)
+    

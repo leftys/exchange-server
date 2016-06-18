@@ -44,7 +44,7 @@ class Exchange:
         if order_was_traded:
             self.stats["traded"] += 2
         if self.fill_callback and order_was_traded:
-            await self.fill_callback(order.clientid, order.id, order.price_traded, order.qty)
+            await self.fill_callback(order.clientid, order.id, order.price_traded, qty-order.qty)
             for filled_order in filled:
                 await self.fill_callback(filled_order.clientid, filled_order.id, filled_order.price_traded,
                                          filled_order.qty)
@@ -75,8 +75,8 @@ class Exchange:
         if self.datastream_callback:
             await self.datastream_callback("cancel", order.side, order.time, order.price, order.qty)
 
-    def set_callbacks(self, fill: Callable[[str, int, Decimal, int], None], datastream: Callable[[str, str, datetime.time,
-                                                                                        Decimal, int], None])-> None:
+    def set_callbacks(self, fill: Callable[[str, int, Decimal, int], None], datastream: Callable[[str, str,
+                                                                            datetime.time, Decimal, int], None])-> None:
         """
         Sets callbacks i.e. functions, which will be called when an order is opened, closed or traded.
         :param fill: Method, that will be called when an order was filled. That function should accept clientid,
