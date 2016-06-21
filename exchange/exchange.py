@@ -39,9 +39,9 @@ class Exchange:
         """
         order = book.Order(orderid, clientid, side, price, qty)
         (order, filled) = self.book.open_order(order)
-        self.stats["opened"] += 1
         order_was_traded = len(filled) > 0
         order_was_fully_traded = order.qty == 0
+        self.stats["opened"] += 1
         if order_was_traded:
             self.stats["traded"] += 2
         if self.fill_callback and order_was_traded:

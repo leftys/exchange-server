@@ -21,10 +21,23 @@ class TestExchange(TestCase):
             e.open_order("234", 1, "SELL", Decimal(149), 100),
         ]
         loop.run_until_complete(asyncio.wait(tasks))
-        print(e.book._bid)
-        print(e.book._ask)
+
+        self.assertTrue(len(e.book._bid) == 1, "Bid order missing")
         self.assertTrue(len(e.book._ask) == 0, "Ask table not cleaned")
-        self.assertTrue(len(e.book._bid) == 1, "Incomplete bid order deleted")
+        self.assertEqual(e.book._bid[0].price, Decimal(150), "Bid order has wrong price")
+        self.assertEqual(e.book._bid[0].qty, 100, "Bid order has wrong qty")
+
+    def test_sell_order_price_not_changed(self):
+        loop = asyncio.get_event_loop()
+        e = exchange.Exchange()
+        tasks = [
+            e.open_order("123", 0, "BUY", Decimal(150), 100),
+            e.open_order("124", 1, "SELL", Decimal(149), 200),
+        ]
+        loop.run_until_complete(asyncio.wait(tasks))
+
+        self.assertEqual(e.book._ask[0].price, Decimal(149), "Ask order price changed after filling")
+        self.assertEqual(e.book._ask[0].qty, 100, "Sell order has wrong price")
 
     def test_decimal(self):
         loop = asyncio.get_event_loop()
@@ -45,7 +58,7 @@ class TestExchange(TestCase):
         loop.run_until_complete(e.cancel_order(0, "123"))
         self.assertEqual(len(e.book._bid), 0, "Order was not canceled")
 
-    def _open_orders_and_get_reports(self, exchange_obj, tasks):
+    def _execute_and_get_reports(self, exchange_obj, tasks):
         loop = asyncio.get_event_loop()
         fill_report = []
         datastream_report = []
@@ -60,8 +73,7 @@ class TestExchange(TestCase):
 
         exchange_obj.set_callbacks(fill_callback, datastream_callback)
 
-        # Run tasks one by one to ensure reports order
-        for t in tasks:
+        for t in tasks:  # Run tasks one by one to ensure reports order
             loop.run_until_complete(asyncio.wait([t]))
 
         return fill_report, datastream_report
@@ -73,7 +85,7 @@ class TestExchange(TestCase):
             e.open_order("334", 1, "SELL", Decimal(149), 100),
         ]
 
-        fill_report, datastream_report = self._open_orders_and_get_reports(e, tasks)
+        fill_report, datastream_report = self._execute_and_get_reports(e, tasks)
 
         self.assertIn((1, '334', Decimal('150'), 100), fill_report)
         self.assertIn((0, '223', Decimal('150'), 100), fill_report)
@@ -86,16 +98,12 @@ class TestExchange(TestCase):
             e.open_order("334", 1, "SELL", Decimal(149), 100),
         ]
 
-        (fill_report, datastream_report) = self._open_orders_and_get_reports(e, tasks)
+        (fill_report, datastream_report) = self._execute_and_get_reports(e, tasks)
 
-        # todo
-        # datastream_report # Ignore type, side and datetime
-        # self.assertEqual(price_and_qty, )
-        self.assertEqual(len(datastream_report), 3, "Datastream callback returned redundant items.")
+        price_and_qty = [x[3:] for x in datastream_report]  # Ignore type, side and datetime
+        self.assertListEqual(price_and_qty,
+                         [(Decimal('150'), 200),
+                         (Decimal('150'), 100),
+                         (Decimal('150'), 100)])
 
-        # [('orderbook', 'BUY', datetime.datetime(2016, 6, 18, 12, 41, 39, 986376), Decimal('150'), 200),
-        # ('trade', None, datetime.datetime(2016, 6, 18, 12, 41, 39, 987852), Decimal('150'), 100),
-        # ('orderbook', 'BUY', datetime.datetime(2016, 6, 18, 12, 41, 39, 986376), Decimal('150'), 100)]
-        # todo: check reports content
-
-    # todo: more tests. report order may vary!
+    # Future work: implement more tests. Not all funcionality and error cases are covered.

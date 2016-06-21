@@ -4,6 +4,8 @@ import datetime
 import abc
 import sys
 from decimal import Decimal
+import traceback
+from concurrent.futures._base import CancelledError
 
 # Use faster json module when available
 try:
@@ -32,7 +34,7 @@ class GenericServer(metaclass=abc.ABCMeta):
             print("Client %d disconnected" % task.result())
             del self.clients[task.result()]
         except:
-            print("Client forced to disconnect.")
+            print("Client forced to disconnect.", file=sys.stderr)
 
     def _accept_client(self, client_reader, client_writer):
         clientid = self.exchange.get_clientid()
@@ -89,17 +91,30 @@ class OrderServer(GenericServer):
                         "orderId": data["orderId"],
                         "report": "NEW"
                     })
-                    # await asyncio.sleep(0.001)
                     await self.exchange.open_order(data["orderId"], clientid, data["side"], Decimal(data["price"]),
                                                    data["quantity"])
                 elif data["message"] == "cancelOrder":
-                    await self._send_json(client_writer, {
-                        "message": "cancelOrder",
-                        "orderId": data["orderId"]
-                    })
                     await self.exchange.cancel_order(clientid, data["orderId"])
-            except ConnectionResetError:
+                    await self._send_json(client_writer, {
+                        "message": "executionReport",
+                        "orderId": data["orderId"],
+                        "report": "CANCELLED"
+                    })
+                else:
+                    raise Exception("Unknown order type")
+            except ConnectionResetError:  # Client has disconnected
                 break
+            except CancelledError:  # Clients task has been cancelled
+                break
+            except Exception as ex:  # Another error
+                print("Exception raised for client %d:" % clientid)
+                traceback.print_exc(file=sys.stderr)
+                reason = traceback.format_exception_only(type(ex), ex)[0].rstrip("\n")
+                await self._send_json(client_writer, {
+                    "message": "error",
+                    "report": "Processing your request failed",
+                    "reason": reason
+                })
         return clientid  # return clientid as task result, so we can recognize the disconnected client in _client_done()
 
     async def fill_order_report(self, clientid: str, orderid: int, price: Decimal, qty: int) -> None:

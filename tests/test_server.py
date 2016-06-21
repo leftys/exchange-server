@@ -40,3 +40,5 @@ class TestServer(TestCase):
         e.print_stats()
         self.assertEqual(e.stats["opened"], 1000)
         self.assertGreater(e.stats["traded"], 500)
+
+    # Future work: implement more tests. Not all funcionality and error cases are covered.

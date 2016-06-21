@@ -23,7 +23,7 @@ class Book:
             return "BUY"
 
     def _get_table(self, side: str):
-        assert side in ["BUY", "SELL"]
+        assert side in ["BUY", "SELL"], "Side has to be BUY or SELL"
         if side == "BUY":
             return self._bid
         elif side == "SELL":
@@ -57,7 +57,7 @@ class Book:
                         del orders[idx]
                     self._update_price_qty(side, order.price, -order.qty)
                     return order
-        raise KeyError
+        raise KeyError("Order with specified id does not exit")
 
     def _try_match_order(self, opened_order: Order) -> Tuple[Order, List[Order]]:
         filled = []
