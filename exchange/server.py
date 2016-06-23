@@ -163,7 +163,7 @@ class DatastreamServer(GenericServer):
                 "type": type,
                 "price": str(price),
                 "quantity": qty,
-                "time": time.timestamp(),  # todo: overit ze se to posila spravne
+                "time": time.timestamp(),
             }
             if side:  # only for some types of reports, not for "trade"
                 message["side"] = translate[side]

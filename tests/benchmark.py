@@ -1,4 +1,7 @@
 #!/usr/bin/env python3.5
+#
+# Benchmark script, also included in unittests.
+
 import asyncio
 import json
 import sys
@@ -10,6 +13,13 @@ async def _read_incoming_data(reader):
         raise StopAsyncIteration()
     while not reader.at_eof():
         await reader.readline()
+
+
+async def _send_message(writer, msg):
+    data = json.dumps(msg)
+    writer.write(data.encode('utf-8'))
+    writer.write(b'\n')
+    await writer.drain()
 
 
 async def benchmark(host, port, max_orders=0, sleep_time=0):
@@ -75,16 +85,9 @@ async def network_benchmark(host, port, max_orders=0, sleep_time=0):
         print("Orders opened: ", num_orders)
 
 
-async def _send_message(writer, msg):
-    data = json.dumps(msg)
-    writer.write(data.encode('utf-8'))
-    writer.write(b'\n')
-    await writer.drain()
-
-
 async def main():
-    assert len(sys.argv) == 3 or len(sys.argv) == 4, \
-        'Usage: benchmark.py hostname port [net]'
+    if len(sys.argv) != 3 and len(sys.argv) != 4:
+        exit('Usage: benchmark.py hostname port [net]')
     host = sys.argv[1]
     port = int(sys.argv[2])
     if len(sys.argv) == 4 and sys.argv[3] == 'net':
