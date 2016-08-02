@@ -122,7 +122,7 @@ class OrderServer(GenericServer):
         Sends report about order execution to client.
         Here qty means the number of traded stocks, not remaining.
         """
-        if clientid not in self.clients:  # Client already disconencted. Don't send the fill report.
+        if clientid not in self.clients:  # Client already disconnected. Don't send the fill report.
             return
         (reader, writer) = self.clients[clientid]
         await self._send_json(writer, {
